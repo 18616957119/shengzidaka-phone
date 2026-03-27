@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <title>六年级生字智能打卡</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            line-height: 1.6;
+            padding-bottom: 100px;
+        }
+        header {
+            position: fixed; top: 0; left: 0; right: 0; height: 56px;
+            background: rgba(255,255,255,0.95);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px; z-index: 1000;
+        }
+        .logo { font-size: 1em; font-weight: 700; color: #667eea; }
+        .stats { display: flex; gap: 8px; }
+        .stat { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 6px 12px; border-radius: 16px; font-size: 0.75em; font-weight: 600; }
+        .container { max-width: 100%; margin: 0 auto; padding: 72px 12px 20px; }
+        .dashboard { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .dash-card { background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .dash-value { font-size: 2em; font-weight: 700; color: #667eea; }
+        .dash-label { font-size: 0.7em; color: #6e6e73; margin-top: 4px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tab { padding: 10px 16px; background: white; border: 2px solid #e0e0e8; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85em; white-space: nowrap; transition: all 0.3s; }
+        .tab.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+        .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .char-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e0e0e8; }
+        .char-hanzi { font-size: 3.5em; font-weight: 700; color: #667eea; line-height: 1; }
+        .mastery-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.7em; font-weight: 700; margin-left: auto; }
+        .mastery-new { background: #e0e0e8; color: #6e6e73; }
+        .mastery-mastered { background: rgba(52,199,89,0.15); color: #34c759; }
+        .mastery-proficient { background: rgba(175,82,222,0.15); color: #af52de; }
+        .mastery-expert { background: rgba(0,113,227,0.15); color: #0071e3; }
+        .section { margin-bottom: 16px; }
+        .section-title { font-size: 0.8em; color: #6e6e73; font-weight: 600; margin-bottom: 8px; }
+        .word-inputs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+        .word-input { padding: 12px 14px; border: 2px solid #e0e0e8; border-radius: 10px; font-size: 1em; transition: all 0.3s; background: white; }
+        .word-input:focus { outline: none; border-color: #667eea; }
+        .word-input.correct { border-color: #34c759; background: rgba(52,199,89,0.05); }
+        .word-input.incorrect { border-color: #ff3b30; background: rgba(255,59,48,0.05); }
+        .feedback { padding: 10px 14px; border-radius: 8px; margin-top: 8px; font-size: 0.85em; font-weight: 600; display: none; }
+        .feedback.show { display: block; }
+        .feedback.success { background: rgba(52,199,89,0.1); color: #34c759; }
+        .feedback.error { background: rgba(255,59,48,0.1); color: #ff3b30; }
+        .btn { padding: 12px 20px; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-family: inherit; margin-right: 8px; margin-bottom: 8px; transition: all 0.3s; font-size: 0.9em; }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-success { background: #34c759; color: white; }
+        .btn-danger { background: #ff3b30; color: white; }
+        .btn-secondary { background: #f0f0f5; color: #1d1d1f; border: 2px solid #e0e0e8; }
+        .btn-small { padding: 8px 14px; font-size: 0.85em; }
+        .btn-block { width: 100%; margin-right: 0; }
+        .reference { background: #f8f9ff; border-radius: 12px; padding: 16px; margin-top: 16px; display: none; }
+        .reference.show { display: block; }
+        .reference-item { margin-bottom: 12px; }
+        .reference-label { font-size: 0.75em; color: #6e6e73; font-weight: 600; margin-bottom: 6px; }
+        .reference-content { display: flex; flex-wrap: wrap; gap: 6px; }
+        .reference-tag { background: white; padding: 4px 10px; border-radius: 6px; border: 1px solid #e0e0e8; font-size: 0.85em; }
+        .reference-example { background: white; padding: 12px; border-radius: 8px; border-left: 3px solid #667eea; margin-top: 8px; }
+        .wrong-count { background: #ff3b30; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7em; font-weight: 700; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; border-radius: 24px; max-width: 100%; width: 100%; padding: 32px 24px; text-align: center; }
+        .modal h2 { font-size: 1.5em; margin-bottom: 16px; color: #667eea; }
+        .modal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+        .modal-stat { background: #f8f9ff; padding: 12px; border-radius: 12px; }
+        .modal-stat-value { font-size: 1.5em; font-weight: 700; color: #667eea; }
+        .modal-stat-label { font-size: 0.7em; color: #6e6e73; margin-top: 4px; }
+        .bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e0e0e8; padding: 12px; display: flex; gap: 8px; justify-content: center; z-index: 999; }
+        @media (min-width: 768px) { .grid { grid-template-columns: repeat(2, 1fr); } .dashboard { grid-template-columns: repeat(4, 1fr); } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">📚 六年级生字</div>
+        <div class="stats">
+            <div class="stat">📅 <span id="streakDisplay">0</span>天</div>
+            <div class="stat">✅ <span id="todayDisplay">0/20</span></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard">
+            <div class="dash-card">
+                <div class="dash-value" id="totalLearned">0</div>
+                <div class="dash-label">总识字量</div>
+            </div>
+            <div class="dash-card">
+                <div class="dash-value" id="wrongCount">0</div>
+                <div class="dash-label">错字本</div>
+            </div>
+            <div class="dash-card">
+                <div class="dash-value" id="masteredCount">0</div>
+                <div class="dash-label">已掌握</div>
+            </div>
+            <div class="dash-card">
+                <div class="dash-value" id="daysCount">0</div>
+                <div class="dash-label">学习天数</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('today')">📅 今日</div>
+            <div class="tab" onclick="switchTab('wrong')">❌ 错字</div>
+            <div class="tab" onclick="switchTab('learned')">✅ 已掌握</div>
+            <div class="tab" onclick="switchTab('all')">📖 全部</div>
+        </div>
+
+        <div class="grid" id="cardsGrid"></div>
+    </div>
+
+    <div class="bottom-bar">
+        <button class="btn btn-primary btn-block" onclick="completeToday()">✅ 完成打卡</button>
+        <button class="btn btn-secondary" onclick="addMoreWords()">➕</button>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>🎉 今日打卡完成！</h2>
+            <div class="modal-stats">
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalToday">0</div>
+                    <div class="modal-stat-label">今日学习</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalTotal">0</div>
+                    <div class="modal-stat-label">总识字量</div>
+                </div>
+                <div class="modal-stat">
+                    <div class="modal-stat-value" id="modalStreak">0</div>
+                    <div class="modal-stat-label">连续打卡</div>
+                </div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="closeModal()">好的，明天见</button>
+        </div>
+    </div>
+
+    <script>
+        var CHARACTER_DATA = {
+            '醋': { words: ['陈醋','米醋','醋意'], sentence: '这瓶陈醋很香。' },
+            '饺': { words: ['饺子','水饺','蒸饺'], sentence: '今天中午吃饺子。' },
+            '拌': { words: ['搅拌','拌菜','拌嘴'], sentence: '他在拌菜。' },
+            '眨': { words: ['眨眼','眨巴'], sentence: '他眨了眨眼睛。' },
+            '宵': { words: ['元宵','宵夜','通宵'], sentence: '元宵节吃汤圆。' },
+            '燃': { words: ['燃烧','燃料','点燃'], sentence: '火焰在燃烧。' },
+            '贩': { words: ['贩卖','商贩','摊贩'], sentence: '他是小商贩。' },
+            '轿': { words: ['轿车','花轿','轿子'], sentence: '这是一辆轿车。' },
+            '骆': { words: ['骆驼'], sentence: '骆驼在沙漠中行走。' },
+            '驼': { words: ['骆驼','驼峰','驼背'], sentence: '骆驼有驼峰。' },
+            '浒': { words: ['水浒'], sentence: '水浒传是四大名著之一。' },
+            '碱': { words: ['碱性','盐碱'], sentence: '这是碱性物质。' },
+            '蜜': { words: ['蜜蜂','甜蜜','蜂蜜'], sentence: '蜜蜂在采蜜。' },
+            '饯': { words: ['蜜饯','饯行'], sentence: '这是蜜饯果脯。' },
+            '逛': { words: ['逛街','闲逛'], sentence: '我们去逛街吧。' },
+            '腊': { words: ['腊月','腊肉','腊肠'], sentence: '腊月是农历十二月。' },
+            '粥': { words: ['稀粥','米粥','喝粥'], sentence: '早上喝粥。' },
+            '腻': { words: ['油腻','细腻'], sentence: '这道菜太油腻了。' },
+            '咽': { words: ['吞咽','咽下','咽喉'], sentence: '他咽下了食物。' },
+            '匙': { words: ['汤匙','钥匙'], sentence: '用汤匙喝汤。' },
+            '搅': { words: ['搅拌','搅和'], sentence: '搅拌一下。' },
+            '稠': { words: ['稠密','稀稠'], sentence: '粥太稠了。' },
+            '肿': { words: ['肿胀','红肿'], sentence: '手肿了。' },
+            '熬': { words: ['熬粥','熬夜'], sentence: '妈妈在熬粥。' },
+            '褐': { words: ['褐色'], sentence: '这是褐色的。' },
+            '缸': { words: ['水缸','鱼缸'], sentence: '鱼缸里有鱼。' },
+            '脏': { words: ['脏话','肮脏'], sentence: '这里很脏。' },
+            '筷': { words: ['筷子','碗筷'], sentence: '用筷子吃饭。' },
+            '籍': { words: ['书籍','籍贯','国籍'], sentence: '这是他的书籍。' },
+            '屉': { words: ['抽屉','笼屉'], sentence: '放在抽屉里。' },
+            '怖': { words: ['恐怖','可怖'], sentence: '这部电影很恐怖。' },
+            '瞅': { words: ['瞅见'], sentence: '他瞅了我一眼。' },
+            '魔': { words: ['魔鬼','魔术','魔法'], sentence: '这是魔术。' },
+            '胖': { words: ['肥胖','胖子'], sentence: '他有点胖。' },
+            '刑': { words: ['刑法','刑罚'], sentence: '触犯刑法。' },
+            '哼': { words: ['哼唱'], sentence: '他在哼歌。' },
+            '峻': { words: ['严峻','峻峭'], sentence: '形势严峻。' },
+            '残': { words: ['残疾','残忍'], sentence: '他很残忍。' },
+            '匪': { words: ['土匪','匪徒'], sentence: '土匪被抓住了。' },
+            '窝': { words: ['鸟窝','窝头'], sentence: '鸟在窝里。' },
+            '啃': { words: ['啃骨头'], sentence: '狗在啃骨头。' },
+            '舅': { words: ['舅舅','舅父'], sentence: '舅舅来了。' },
+            '宴': { words: ['宴会','宴请'], sentence: '参加宴会。' },
+            '贺': { words: ['祝贺','贺喜','贺卡'], sentence: '祝贺你！' },
+            '惧': { words: ['恐惧','惧怕'], sentence: '他不恐惧。' },
+            '凄': { words: ['凄凉','凄惨'], sentence: '这里很凄凉。' },
+            '霉': { words: ['发霉','霉菌'], sentence: '面包发霉了。' },
+            '乏': { words: ['缺乏','疲乏'], sentence: '缺乏经验。' },
+            '控': { words: ['控制','控告'], sentence: '控制情绪。' },
+            '贷': { words: ['贷款','信贷'], sentence: '申请贷款。' },
+            '剔': { words: ['挑剔','剔除'], sentence: '不要挑剔。' },
+            '袭': { words: ['袭击','偷袭'], sentence: '遭到袭击。' },
+            '覆': { words: ['覆盖','颠覆'], sentence: '覆盖表面。' },
+            '梗': { words: ['梗概'], sentence: '故事梗概。' },
+            '寞': { words: ['寂寞','落寞'], sentence: '感到寂寞。' },
+            '标': { words: ['标准','标志','目标'], sentence: '达到标准。' },
+            '渺': { words: ['渺小','渺茫'], sentence: '个人很渺小。' },
+            '恰': { words: ['恰好','恰当'], sentence: '恰好遇到。' },
+            '澡': { words: ['洗澡','澡堂'], sentence: '去洗澡。' },
+            '械': { words: ['机械','器械'], sentence: '这是机械。' },
+            '逆': { words: ['逆流','逆风'], sentence: '逆流而上。' },
+            '域': { words: ['区域','领域'], sentence: '这个区域。' },
+            '栅': { words: ['栅栏'], sentence: '木栅栏。' },
+            '栏': { words: ['栏杆','栏目'], sentence: '栏杆很高。' },
+            '综': { words: ['综合','综艺'], sentence: '综合分析。' },
+            '合': { words: ['合作','合格'], sentence: '合作愉快。' },
+            '普': { words: ['普通','普及'], sentence: '很普通。' },
+            '盗': { words: ['盗窃','盗贼'], sentence: '防止盗窃。' },
+            '偷': { words: ['偷窃','小偷'], sentence: '不要偷东西。' },
+            '迈': { words: ['迈步','迈进'], sentence: '迈步向前。' },
+            '惩': { words: ['惩罚','惩处'], sentence: '受到惩罚。' },
+            '罚': { words: ['惩罚','罚款'], sentence: '被罚款了。' },
+            '啄': { words: ['啄食'], sentence: '鸟在啄食。' },
+            '肝': { words: ['肝脏'], sentence: '保护肝脏。' },
+            '获': { words: ['获得','收获'], sentence: '获得奖励。' },
+            '瀑': { words: ['瀑布'], sentence: '瀑布很壮观。' },
+            '峭': { words: ['陡峭','峭壁'], sentence: '山势陡峭。' },
+            '躯': { words: ['身躯','躯体'], sentence: '身躯高大。' },
+            '津': { words: ['天津','津贴'], sentence: '天津是城市。' },
+            '蕴': { words: ['蕴含','蕴藏'], sentence: '蕴含深意。' },
+            '侠': { words: ['侠客','武侠'], sentence: '他是大侠。' },
+            '施': { words: ['施工','实施'], sentence: '正在施工。' },
+            '挠': { words: ['挠头','阻挠'], sentence: '别挠头。' },
+            '庸': { words: ['平庸','庸俗'], sentence: '不甘平庸。' },
+            '艰': { words: ['艰苦','艰难'], sentence: '条件艰苦。' },
+            '毅': { words: ['毅力','毅然'], sentence: '有毅力。' },
+            '铲': { words: ['铲子','铲除'], sentence: '用铲子铲土。' },
+            '劣': { words: ['劣质','恶劣'], sentence: '劣质产品。' },
+            '惹': { words: ['惹事','招惹'], sentence: '别惹事。' },
+            '讥': { words: ['讥笑','讥讽'], sentence: '不要讥笑别人。' },
+            '桨': { words: ['船桨','划桨'], sentence: '用桨划船。' },
+            '岔': { words: ['岔路','岔口'], sentence: '走岔路了。' },
+            '挚': { words: ['真挚','挚友'], sentence: '真挚的感情。' },
+            '寝': { words: ['寝室','就寝'], sentence: '回寝室。' },
+            '频': { words: ['频繁','频率'], sentence: '频繁发生。' },
+            '朦': { words: ['朦胧'], sentence: '月色朦胧。' },
+            '胧': { words: ['朦胧'], sentence: '朦胧的月光。' },
+            '斑': { words: ['斑点','斑马'], sentence: '有斑点。' },
+            '篇': { words: ['篇章','篇幅'], sentence: '这篇文章。' },
+            '搁': { words: ['搁置','耽搁'], sentence: '先搁置。' },
+            '填': { words: ['填写','填充'], sentence: '填写表格。' },
+            '怨': { words: ['怨恨','抱怨'], sentence: '不要抱怨。' },
+            '掀': { words: ['掀起','掀开'], sentence: '掀开盖子。' },
+            '唉': { words: ['唉声叹气'], sentence: '唉声叹气。' },
+            '裹': { words: ['包裹','裹脚'], sentence: '包裹起来。' },
+            '魁': { words: ['魁梧','魁首'], sentence: '身材魁梧。' },
+            '梧': { words: ['梧桐'], sentence: '梧桐树。' },
+            '淋': { words: ['淋雨','淋浴'], sentence: '淋雨了。' },
+            '撕': { words: ['撕开','撕破'], sentence: '撕开包装。' },
+            '虑': { words: ['考虑','忧虑'], sentence: '仔细考虑。' },
+            '溜': { words: ['溜走','溜冰'], sentence: '偷偷溜走。' },
+            '嘿': { words: ['嘿嘿'], sentence: '嘿嘿笑。' },
+            '割': { words: ['割草','收割'], sentence: '割草。' },
+            '茵': { words: ['绿茵'], sentence: '绿茵草地。' },
+            '蜡': { words: ['蜡烛','蜡笔'], sentence: '点燃蜡烛。' },
+            '陌': { words: ['陌生','陌路'], sentence: '陌生人。' },
+            '盲': { words: ['盲人','盲目'], sentence: '盲人摸象。' },
+            '键': { words: ['键盘','关键'], sentence: '敲键盘。' },
+            '粼': { words: ['粼粼','波光粼粼'], sentence: '波光粼粼。' },
+            '霎': { words: ['霎时'], sentence: '霎时间。' },
+            '录': { words: ['记录','录音'], sentence: '做记录。' }
+        };
+
+        var ALL_CHARS = Object.keys(CHARACTER_DATA);
+        var appState = {
+            todayWords: [],
+            learnedWords: [],
+            wrongWords: [],
+            masteryLevel: {},
+            streak: 0,
+            lastStudyDate: null,
+            totalDays: 0,
+            checkInCompleted: false
+        };
+        var currentTab = 'today';
+
+        function init() {
+            loadState();
+            checkNewDay();
+            updateDashboard();
+            renderCards();
+            updateStats();
+        }
+
+        function loadState() {
+            try {
+                var saved = localStorage.getItem('grade6Characters_iPhone');
+                if (saved) {
+                    appState = JSON.parse(saved);
+                }
+            } catch (e) {}
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('grade6Characters_iPhone', JSON.stringify(appState));
+                updateDashboard();
+            } catch (e) {}
+        }
+
+        function checkNewDay() {
+            var today = new Date().toDateString();
+            if (appState.lastStudyDate !== today) {
+                if (!appState.checkInCompleted && appState.lastStudyDate) {
+                    var yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (appState.lastStudyDate !== yesterday.toDateString()) {
+                        appState.streak = 0;
+                    }
+                }
+                generateTodayWords();
+                appState.checkInCompleted = false;
+            } else {
+                if (appState.todayWords.length === 0) {
+                    generateTodayWords();
+                }
+            }
+        }
+
+        function generateTodayWords() {
+            var wrongChars = appState.wrongWords.slice(0, 5).map(function(w) { return w.char; });
+            var remaining = 20 - wrongChars.length;
+            var available = ALL_CHARS.filter(function(c) {
+                return appState.learnedWords.indexOf(c) === -1 && wrongChars.indexOf(c) === -1;
+            });
+            available.sort(function() { return Math.random() - 0.5; });
+            var newChars = available.slice(0, remaining);
+            appState.todayWords = wrongChars.concat(newChars);
+            saveState();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            var tabs = document.querySelectorAll('.tab');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            document.querySelector('.tab[onclick="switchTab(\'' + tab + '\')"]').classList.add('active');
+            renderCards();
+        }
+
+        function renderCards() {
+            var grid = document.getElementById('cardsGrid');
+            grid.innerHTML = '';
+            var chars = [];
+            if (currentTab === 'today') {
+                chars = appState.todayWords;
+            } else if (currentTab === 'wrong') {
+                chars = appState.wrongWords.map(function(w) { return w.char; });
+            } else if (currentTab === 'learned') {
+                chars = appState.learnedWords;
+            } else {
+                chars = ALL_CHARS;
+            }
+            if (chars.length === 0) {
+                var msg = currentTab === 'learned' ? '📭 还没有掌握的字，继续加油！' : '📭 暂无内容';
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 60px; color: #6e6e73;">' + msg + '</div>';
+                return;
+            }
+            for (var i = 0; i < chars.length; i++) {
+                var card = createCard(chars[i], i);
+                grid.appendChild(card);
+            }
+        }
+
+        function createCard(char, index) {
+            var card = document.createElement('div');
+            card.className = 'card';
+            var details = CHARACTER_DATA[char] || { words: [], sentence: '' };
+            var mastery = appState.masteryLevel[char] || 'new';
+            var masteryLabels = { new: '新学', mastered: '掌握', proficient: '熟练', expert: '精通' };
+            var wrongInfo = null;
+            for (var i = 0; i < appState.wrongWords.length; i++) {
+                if (appState.wrongWords[i].char === char) {
+                    wrongInfo = appState.wrongWords[i];
+                    break;
+                }
+            }
+            var wrongCount = wrongInfo ? wrongInfo.count : 0;
+            var wordsHtml = '';
+            for (var j = 0; j < details.words.length; j++) {
+                wordsHtml += '<span class="reference-tag">' + details.words[j] + '</span>';
+            }
+            card.innerHTML = '<div class="char-header">' +
+                '<div class="char-hanzi">' + char + '</div>' +
+                (wrongCount > 0 ? '<span class="wrong-count">错' + wrongCount + '次</span>' : '') +
+                '<div class="mastery-badge mastery-' + mastery + '">' + masteryLabels[mastery] + '</div>' +
+                '</div>' +
+                '<div class="section">' +
+                '<div class="section-title">✍️ 自主组词（输入 3 个）</div>' +
+                '<div class="word-inputs" id="wordInputs_' + index + '">' +
+                '<input type="text" class="word-input" placeholder="输入词语 1" data-char="' + char + '">' +
+                '<input type="text" class="word-input" placeholder="输入词语 2" data-char="' + char + '">' +
+                '<input type="text" class="word-input" placeholder="输入词语 3" data-char="' + char + '">' +
+                '</div>' +
+                '<div class="feedback" id="feedback_' + index + '"></div>' +
+                '<div>' +
+                '<button class="btn btn-primary btn-small" onclick="checkWords(' + index + ', \'' + char + '\')">判断对错</button>' +
+                '<button class="btn btn-secondary btn-small" onclick="toggleReference(' + index + ')">参考答案</button>' +
+                '</div>' +
+                '</div>' +
+                '<div class="reference" id="reference_' + index + '">' +
+                (details.words.length > 0 ? '<div class="reference-item"><div class="reference-label">📖 参考组词</div><div class="reference-content">' + wordsHtml + '</div></div>' : '') +
+                '<div class="reference-item"><div class="reference-label">💬 造句</div><div class="reference-example">' + details.sentence + '</div></div>' +
+                '</div>' +
+                '<div style="margin-top: 16px;">' +
+                '<button class="btn btn-danger btn-small" onclick="markWord(\'' + char + '\', \'wrong\')">❌ 不会</button>' +
+                '<button class="btn btn-success btn-small" onclick="markWord(\'' + char + '\', \'mastered\')">✅ 掌握</button>' +
+                '<button class="btn btn-primary btn-small" onclick="markWord(\'' + char + '\', \'expert\')">⭐ 精通</button>' +
+                '</div>';
+            return card;
+        }
+
+        function checkWords(index, char) {
+            var inputs = document.querySelectorAll('#wordInputs_' + index + ' .word-input');
+            var feedback = document.getElementById('feedback_' + index);
+            var correctCount = 0;
+            var hasError = false;
+            var filledCount = 0;
+            for (var i = 0; i < inputs.length; i++) {
+                var value = inputs[i].value.trim();
+                if (value) {
+                    filledCount++;
+                    if (value.indexOf(char) !== -1) {
+                        inputs[i].classList.add('correct');
+                        inputs[i].classList.remove('incorrect');
+                        correctCount++;
+                    } else {
+                        inputs[i].classList.add('incorrect');
+                        inputs[i].classList.remove('correct');
+                        hasError = true;
+                    }
+                }
+            }
+            feedback.classList.remove('success', 'error');
+            feedback.classList.add('show');
+            if (correctCount >= 3 && !hasError && filledCount >= 3) {
+                feedback.classList.add('success');
+                feedback.textContent = '✓ 全部正确！已自动掌握';
+                markWord(char, 'mastered');
+            } else if (hasError) {
+                feedback.classList.add('error');
+                feedback.textContent = '✗ 组词中需要包含该汉字';
+            } else {
+                feedback.classList.add('error');
+                feedback.textContent = '✗ 需要 3 个正确的组词（当前：' + correctCount + '个）';
+            }
+        }
+
+        function toggleReference(index) {
+            var ref = document.getElementById('reference_' + index);
+            ref.classList.toggle('show');
+        }
+
+        function markWord(char, status) {
+            if (status === 'wrong') {
+                appState.masteryLevel[char] = 'new';
+                var existing = null;
+                for (var i = 0; i < appState.wrongWords.length; i++) {
+                    if (appState.wrongWords[i].char === char) {
+                        existing = appState.wrongWords[i];
+                        break;
+                    }
+                }
+                if (existing) {
+                    existing.count++;
+                } else {
+                    appState.wrongWords.push({ char: char, count: 1 });
+                }
+            } else {
+                appState.masteryLevel[char] = status;
+                if (appState.learnedWords.indexOf(char) === -1) {
+                    appState.learnedWords.push(char);
+                }
+                var newWrong = [];
+                for (var j = 0; j < appState.wrongWords.length; j++) {
+                    if (appState.wrongWords[j].char !== char) {
+                        newWrong.push(appState.wrongWords[j]);
+                    }
+                }
+                appState.wrongWords = newWrong;
+            }
+            saveState();
+            renderCards();
+            updateDashboard();
+        }
+
+        function updateDashboard() {
+            document.getElementById('totalLearned').textContent = appState.learnedWords.length;
+            document.getElementById('wrongCount').textContent = appState.wrongWords.length;
+            document.getElementById('masteredCount').textContent = Object.keys(appState.masteryLevel).filter(function(k) { return appState.masteryLevel[k] === 'mastered' || appState.masteryLevel[k] === 'expert'; }).length;
+            document.getElementById('daysCount').textContent = appState.totalDays;
+            document.getElementById('streakDisplay').textContent = appState.streak;
+        }
+
+        function updateStats() {
+            var completed = 0;
+            for (var i = 0; i < appState.todayWords.length; i++) {
+                var c = appState.todayWords[i];
+                if (appState.masteryLevel[c] === 'mastered' || appState.masteryLevel[c] === 'expert') {
+                    completed++;
+                }
+            }
+            document.getElementById('todayDisplay').textContent = completed + '/' + appState.todayWords.length;
+        }
+
+        function completeToday() {
+            var completed = 0;
+            for (var i = 0; i < appState.todayWords.length; i++) {
+                var c = appState.todayWords[i];
+                if (appState.masteryLevel[c] === 'mastered' || appState.masteryLevel[c] === 'expert') {
+                    completed++;
+                }
+            }
+            if (completed < appState.todayWords.length) {
+                alert('请完成所有' + appState.todayWords.length + '个字的学习后再打卡！\n当前进度：' + completed + '/' + appState.todayWords.length);
+                return;
+            }
+            var today = new Date().toDateString();
+            if (appState.lastStudyDate !== today) {
+                var yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                if (appState.lastStudyDate === yesterday.toDateString()) {
+                    appState.streak++;
+                } else {
+                    appState.streak = 1;
+                }
+                appState.lastStudyDate = today;
+                appState.totalDays++;
+                appState.checkInCompleted = true;
+                saveState();
+            }
+            document.getElementById('modalToday').textContent = appState.todayWords.length;
+            document.getElementById('modalTotal').textContent = appState.learnedWords.length;
+            document.getElementById('modalStreak').textContent = appState.streak;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+
+        function addMoreWords() {
+            var available = ALL_CHARS.filter(function(c) { return appState.todayWords.indexOf(c) === -1; });
+            available.sort(function() { return Math.random() - 0.5; });
+            var newChars = available.slice(0, 5);
+            appState.todayWords = appState.todayWords.concat(newChars);
+            saveState();
+            renderCards();
+            updateStats();
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
